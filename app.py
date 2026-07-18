@@ -36,6 +36,11 @@ def root():
     return {"status": "YOLOv8 detection server running"}
 
 
+@app.head("/")
+def root_head():
+    return {}
+
+
 @app.post("/detect")
 async def detect(file: UploadFile = File(...)):
     try:
