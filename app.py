@@ -20,12 +20,11 @@ model = YOLO("yolov8n.pt")
 # Classes YOLO standard (COCO dataset) qu'on considère "interdites" pendant un examen
 # Référez-vous à la liste des 80 classes COCO : https://docs.ultralytics.com/datasets/detect/coco/
 SUSPICIOUS_CLASSES = {
-    "cell phone": "ai_phone",
-    "book": "ai_book",
-    "laptop": "ai_laptop",
-    "tablet": "ai_tablet",
-    "remote": "ai_remote",
-    "person": "ai_multiple_persons",  # géré séparément (compte le nombre)
+    "cell phone": "phone",
+    "book": "book",
+    "laptop": "laptop",
+    "tablet": "tablet",
+    "remote": "remote"
 }
 
 CONFIDENCE_THRESHOLD = 0.30
@@ -74,7 +73,14 @@ async def detect(file: UploadFile = File(...)):
                     best_detection = SUSPICIOUS_CLASSES[cls_name]
                     best_confidence = confidence
 
-        # Priorité : plusieurs personnes détectées
+        # 1️⃣ PRIORITÉ ABSOLUE : Objet suspect détecté (Téléphone, Livre...)
+        if best_detection:
+            return {
+                "detected": best_detection,
+                "confidence": round(best_confidence, 2)
+            }
+
+        # 2️⃣ PRIORITÉ SECONDAIRE : Plusieurs personnes détectées
         if person_count > 1:
             return {
                 "detected": "multiple_persons",
@@ -82,16 +88,11 @@ async def detect(file: UploadFile = File(...)):
                 "person_count": person_count
             }
 
-        # Priorité : aucune personne détectée (étudiant absent du cadre)
+        # 3️⃣ PRIORITÉ TERTIAIRE : Étudiant absent du cadre
         if person_count == 0:
             return {"detected": "no_face", "confidence": 1.0}
 
-        if best_detection:
-            return {
-                "detected": best_detection.replace("ai_", ""),
-                "confidence": round(best_confidence, 2)
-            }
-
+        # Si tout est OK
         return {"detected": "none", "confidence": 0}
 
     except Exception as e:
