@@ -6,19 +6,18 @@ import cv2
 
 app = FastAPI()
 
-# Autoriser les appels depuis n'importe quel domaine (votre frontend Vercel)
+# ⚠️ FIX CORS : Ajout de allow_credentials=True et explicitation des headers/méthodes
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS", "HEAD"],
     allow_headers=["*"],
 )
 
-# Charger le modèle YOLOv8 nano (léger et rapide)
+# Charger le modèle YOLOv8 nano
 model = YOLO("yolov8n.pt")
 
-# Classes YOLO standard (COCO dataset) qu'on considère "interdites" pendant un examen
-# Référez-vous à la liste des 80 classes COCO : https://docs.ultralytics.com/datasets/detect/coco/
 SUSPICIOUS_CLASSES = {
     "cell phone": "phone",
     "book": "book",
@@ -37,6 +36,12 @@ def root():
 
 @app.head("/")
 def root_head():
+    return {}
+
+
+# ⚠️ FIX PREFLIGHT: Ajouter un endpoint OPTIONS explicite pour éviter les blocages CORS
+@app.options("/detect")
+async def detect_options():
     return {}
 
 
@@ -73,14 +78,14 @@ async def detect(file: UploadFile = File(...)):
                     best_detection = SUSPICIOUS_CLASSES[cls_name]
                     best_confidence = confidence
 
-        # 1️⃣ PRIORITÉ ABSOLUE : Objet suspect détecté (Téléphone, Livre...)
+        # 1️⃣ PRIORITÉ ABSOLUE : Objet suspect
         if best_detection:
             return {
                 "detected": best_detection,
                 "confidence": round(best_confidence, 2)
             }
 
-        # 2️⃣ PRIORITÉ SECONDAIRE : Plusieurs personnes détectées
+        # 2️⃣ PRIORITÉ SECONDAIRE : Plusieurs personnes
         if person_count > 1:
             return {
                 "detected": "multiple_persons",
@@ -88,7 +93,7 @@ async def detect(file: UploadFile = File(...)):
                 "person_count": person_count
             }
 
-        # 3️⃣ PRIORITÉ TERTIAIRE : Étudiant absent du cadre
+        # 3️⃣ PRIORITÉ TERTIAIRE : Étudiant absent
         if person_count == 0:
             return {"detected": "no_face", "confidence": 1.0}
 
