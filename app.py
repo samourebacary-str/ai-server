@@ -26,7 +26,7 @@ SUSPICIOUS_CLASSES = {
     "remote": "remote"
 }
 
-CONFIDENCE_THRESHOLD = 0.30
+CONFIDENCE_THRESHOLD = 0.15
 
 
 @app.get("/")
